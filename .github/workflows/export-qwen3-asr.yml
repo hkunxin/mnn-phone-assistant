@@ -1,0 +1,61 @@
+name: Export Qwen3-ASR-0.6B to MNN
+
+on:
+  workflow_dispatch:
+    inputs:
+      quant_bit:
+        description: '量化位数（4 更小更快 / 8 更准）'
+        required: false
+        default: '4'
+        type: choice
+        options: ['4', '8']
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Clone MNN & install export deps
+        run: |
+          git clone --depth 1 https://github.com/alibaba/MNN.git
+          pip install -r MNN/transformers/llm/export/requirements.txt
+          pip install qwen-asr "huggingface_hub[cli]"
+
+      - name: Download Qwen/Qwen3-ASR-0.6B
+        run: |
+          huggingface-cli download Qwen/Qwen3-ASR-0.6B --local-dir Qwen3-ASR-0.6B
+          du -sh Qwen3-ASR-0.6B
+
+      - name: Export to MNN format (hqq quantization)
+        run: |
+          cd MNN/transformers/llm/export
+          python llmexport.py \
+            --path "$GITHUB_WORKSPACE/Qwen3-ASR-0.6B" \
+            --dst_path Qwen3-ASR-0.6B-MNN \
+            --export mnn --hqq \
+            --quant_bit ${{ github.event.inputs.quant_bit || '4' }}
+          echo "=== 输出文件 ==="
+          ls -lh Qwen3-ASR-0.6B-MNN
+          echo "=== config.json ==="
+          cat Qwen3-ASR-0.6B-MNN/config.json | head -40
+
+      - name: Pack model
+        run: |
+          tar czf qwen3-asr-0.6b-mnn-quant${{ github.event.inputs.quant_bit || '4' }}.tar.gz \
+            -C MNN/transformers/llm/export Qwen3-ASR-0.6B-MNN
+          du -sh qwen3-asr-0.6b-mnn-quant*.tar.gz
+
+      - name: Upload model artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qwen3-asr-0.6b-mnn-quant${{ github.event.inputs.quant_bit || '4' }}
+          path: qwen3-asr-0.6b-mnn-quant*.tar.gz
+          if-no-files-found: error
