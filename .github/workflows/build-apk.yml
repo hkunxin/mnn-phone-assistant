@@ -27,7 +27,7 @@ jobs:
           echo "ANDROID_NDK=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
 
       - name: Clone MNN
-        run: git clone --depth 1 https://github.com/alibaba/MNN.git
+        run: git clone --depth 1 https://github.com/hkunxin/MNN.git
 
       - name: Resolve MNN cache key
         id: mnnver
