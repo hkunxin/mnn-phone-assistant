@@ -28,6 +28,17 @@ jobs:
           pip install -r MNN/transformers/llm/export/requirements.txt
           pip install qwen-asr "huggingface_hub[cli]"
 
+      - name: Build MNNConvert from source (pip wheel lacks qwen3_asr audio ops)
+        run: |
+          cd MNN
+          mkdir -p build && cd build
+          cmake -DMNN_BUILD_CONVERTER=ON -DMNN_BUILD_SHARED_LIBS=OFF \
+            -DMNN_LOW_MEMORY=OFF -DMNN_BUILD_TOOLS=OFF -DMNN_BUILD_DEMO=OFF \
+            -DMNN_BUILD_QUANTOOL=OFF -DMNN_EVALUATION=OFF -DMNN_BUILD_TEST=OFF \
+            -DMNN_BUILD_OPENCV=OFF .. > cmake.log 2>&1 || cat cmake.log
+          make MNNConvert -j4
+          ls -lh MNNConvert
+
       - name: Download Qwen/Qwen3-ASR-0.6B
         run: |
           huggingface-cli download Qwen/Qwen3-ASR-0.6B --local-dir Qwen3-ASR-0.6B
