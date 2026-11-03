@@ -29,6 +29,25 @@ jobs:
       - name: Clone MNN
         run: git clone --depth 1 https://github.com/hkunxin/MNN.git
 
+      # Fixed signing key (spec-002): every APK shares one signature so new
+      # builds install directly over previous ones (no uninstall needed).
+      - name: Restore signing keystore
+        env:
+          KS_B64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_B64 }}
+          KS_STORE_PASS: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          KS_KEY_PASS: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ]; then
+            echo "::warning::signing secrets missing — APK will use ephemeral debug key"
+            exit 0
+          fi
+          echo "$KS_B64" | base64 -d > MNN/apps/Android/MnnLlmChat/assistant-signing.jks
+          echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/MNN/apps/Android/MnnLlmChat/assistant-signing.jks" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=$KS_STORE_PASS" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=$KS_ALIAS" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$KS_KEY_PASS" >> "$GITHUB_ENV"
+
       - name: Resolve MNN cache key
         id: mnnver
         run: echo "sha=$(git -C MNN rev-parse HEAD)" >> "$GITHUB_OUTPUT"
